@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🎯 Détecte le Biais — Jeu Pédagogique</title>
+  <meta name="description" content="Mini‑jeu pour sensibiliser aux biais dans l'IA : devine la sortie de l'IA, puis analyse les stéréotypes.">
+  <style>
+    :root {
+      --bg: #f3f4f8;
+      --fg: #1f2937;
+      --primary: #374151; /* gris foncé */
+      --primary-2: #1f2937; /* gris très foncé */
+      --accent: #2563eb; /* bleu pro */
+      --good: #10b981; /* vert */
+      --bad: #ef4444; /* rouge */
+      --card-front-a: #e5e7eb;
+      --card-front-b: #d1d5db;
+      --card-back-a: #93c5fd;
+      --card-back-b: #3b82f6;
+      --surface: #ffffff;
+      --muted: #6b7280;
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      --radius: 16px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1020;
+        --fg: #e5e7eb;
+        --surface: #111827;
+        --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+        --card-front-a: #374151;
+        --card-front-b: #4b5563;
+        --card-back-a: #1e3a8a;
+        --card-back-b: #1d4ed8;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
+      color: var(--fg);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+    .header { background: var(--surface); color: var(--fg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; text-align: center; margin-bottom: 24px; }
+    .header h1 { color: var(--accent); margin: 0 0 8px; font-size: clamp(1.6rem, 3vw, 2.4rem); }
+    .header p { color: var(--muted); margin: 0; }
+
+    .toolbar { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin: 16px 0 0; }
+
+    .game-area { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 24px; }
+
+    .card { perspective: 1000px; height: 380px; }
+    .card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
+    .card.is-revealed .card-inner { transform: rotateY(180deg); }
+
+    .face { position: absolute; inset: 0; border-radius: var(--radius); box-shadow: var(--shadow); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; backface-visibility: hidden; }
+
+    .front { background: linear-gradient(135deg, var(--card-front-a) 0%, var(--card-front-b) 100%); color: #2d3436; }
+    .back  { background: linear-gradient(135deg, var(--card-back-a) 0%, var(--card-back-b) 100%); color: #fff; transform: rotateY(180deg); }
+
+    .front h3 { color: var(--accent); margin-top: 0; margin-bottom: 12px; font-size: 1.15rem; text-align: center; }
+    .front p  { text-align: center; line-height: 1.55; }
+
+    .guess { display: grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap: 10px; margin-top: 14px; width: 100%; }
+
+    button.btn { background: linear-gradient(135deg, var(--accent) 0%, #1d4ed8 100%); color: white; border: none; padding: 12px 16px; border-radius: 9999px; font-size: 1rem; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,.25); transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }
+    button.btn:hover{ transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.28); }
+    button.btn:active{ transform: translateY(0); }
+    button.btn:focus-visible{ outline: 3px solid #fff; outline-offset: 2px; }
+
+    .btn-secondary { background: linear-gradient(135deg, #4b5563 0%, #374151 100%); }
+
+    .avatar { width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center; font-size: 3rem; background: rgba(255,255,255,.2); margin-bottom: 10px; }
+
+    .explanation, .glossary, .score { background: var(--surface); color: var(--fg); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); display: none; }
+    .explanation.show, .glossary.show, .score.show { display: block; animation: slideIn .5s ease-out; }
+
+    @keyframes slideIn { from { opacity: 0; transform: translateY(12px);} to { opacity: 1; transform: translateY(0);} }
+
+    .explanation h4 { color: var(--accent); margin: 0 0 8px; }
+
+    .bias-indicator { display: inline-block; padding: 6px 12px; border-radius: 9999px; font-weight: 700; margin-bottom: 10px; font-size: .95rem; }
+    .bias-yes { background: var(--bad); color: #fff; }
+    .bias-no { background: var(--good); color: #fff; }
+
+    .controls { text-align: center; margin: 18px 0 8px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    .progress { background: rgba(255,255,255,.3); height: 10px; border-radius: 9999px; overflow: hidden; margin: 16px 0 8px; }
+    .progress > div { height: 100%; width: 0%; background: linear-gradient(90deg, #22c55e, #84cc16); transition: width .4s ease; }
+
+    details.tips { margin-top: 10px; text-align: left; }
+    details.tips summary { cursor: default; color: var(--accent); font-weight: 600; pointer-events: none; }
+    details.tips summary::-webkit-details-marker { display: none; }
+    details.tips summary::marker { content: ""; }
+
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 1px, 1px); white-space: nowrap; border: 0; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .card-inner { transition: none; }
+      .explanation.show, .glossary.show, .score.show { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header" role="banner">
+      <h1>🎯 Détecte le Biais</h1>
+      <p>Devine la sortie de l'IA, puis discutons des stéréotypes possibles.</p>
+      <div class="toolbar" role="group" aria-label="Actions">
+        <button class="btn btn-secondary" id="replayBtn" type="button">🔄 Rejouer</button>
+
+      </div>
+      <div class="progress" aria-label="Progression">
+        <div id="progressBar" aria-hidden="true"></div>
+      </div>
+      <p id="progressText" class="sr-only" aria-live="polite"></p>
+      <details class="tips" open>
+        <summary>💡 Introduction / Conseils pour l'enseignant·e</summary>
+        <ul>
+          <li>Demander : « Sur quoi l'IA se base‑t‑elle pour déduire un genre ? »</li>
+          <li>Après chaque carte, proposer une description plus inclusive.</li>
+          <li>Finir par des leviers concrets : données diversifiées, audits, métriques d'équité.</li>
+        </ul>
+      </details>
+    </header>
+
+    <main>
+      <section class="game-area" id="gameArea" aria-live="polite"></section>
+
+      <div class="controls">
+        <button class="btn btn-secondary" id="showScoreBtn" type="button">📊 Voir le score</button>
+      </div>
+
+      <section class="explanation" id="explanation" aria-live="polite"></section>
+
+      <section class="glossary" id="glossary" hidden>
+        <h3>📖 Petit glossaire</h3>
+        <div class="glossary-item"><strong>IA générative :</strong> crée des contenus (images, textes) à partir d'une instruction.</div>
+        <div class="glossary-item"><strong>Biais :</strong> préférence systématique injuste, souvent inconsciente.</div>
+        <div class="glossary-item"><strong>Données d'entraînement :</strong> exemples utilisés pour apprendre à l'IA. Si elles sont déséquilibrées, l'IA reproduit ces déséquilibres.</div>
+        <div class="glossary-item"><strong>Stéréotype :</strong> idée simplificatrice sur un groupe, souvent fausse ou exagérée.</div>
+      </section>
+
+      <section class="score" id="scoreArea" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <script>
+    // --- Données des cartes (neutres côté description, 2 choix H/F) ---
+    const cardsData = [
+      { id: 1, description: "45 ans, pratique le yoga, passion pour la décoration, diplôme en aide et soins à la personne.", aiResult: "👩", hasBias: true, explanation: "L'IA a généré une femme alors que le genre n'était pas précisé. Les métiers du soin et la déco sont surreprésentés au féminin dans ses données." },
+      { id: 2, description: "32 ans, adore réparer des moteurs, diplôme en physique, passion pour l'astrophotographie.", aiResult: "👨", hasBias: true, explanation: "Techniques et sciences sont souvent associées aux hommes dans les corpus d'entraînement." },
+      { id: 3, description: "27 ans, développe des logiciels, aime la pâtisserie et le jardinage.", aiResult: "👨", hasBias: true, explanation: "Stéréotype du développeur masculin, malgré des centres d'intérêt variés." },
+      { id: 4, description: "50 ans, enseigne les mathématiques, fan de randonnée en montagne.", aiResult: "👨", hasBias: true, explanation: "Les mathématiques restent culturellement associées aux hommes, y compris dans l'enseignement." },
+      { id: 5, description: "38 ans, responsable de cuisine dans un restaurant étoilé, joue au foot le week-end.", aiResult: "👨", hasBias: true, explanation: "Les IA tendent à associer ce rôle au masculin, d'où l'occasion de discuter du vocabulaire professionnel et de sa neutralité." },
+      { id: 6, description: "40 ans, spécialiste en robotique, joue de la guitare électrique.", aiResult: "👨", hasBias: true, explanation: "La robotique est fréquemment genrée au masculin dans les jeux de données." },
+      { id: 7, description: "28 ans, exerce la médecine générale, pratique la course à pied.", aiResult: "👩", hasBias: true, explanation: "L'IA a choisi un genre alors qu'aucun indice ne l'indiquait : c'est justement ce que l'on cherche à repérer." },
+      { id: 8, description: "35 ans, portrait administratif sans indication particulière, aime la photographie.", aiResult: "👨", hasBias: true, explanation: "Sans indice de genre, l'IA a tout de même proposé un profil masculin : bon point de discussion sur les stéréotypes." },
+      { id: 9, description: "29 ans, conçoit des systèmes d'énergie renouvelable et pratique la peinture à l'huile.", aiResult: "👨", hasBias: true, explanation: "Les rôles d'ingénierie sont souvent genrés au masculin par l'IA malgré des centres d'intérêt artistiques." }
+    ];
+
+    // --- Références DOM ---
+    let el = {};
+    function refreshRefs(){
+      el = {
+        game: document.getElementById('gameArea'),
+        explanation: document.getElementById('explanation'),
+        glossary: document.getElementById('glossary'),
+        score: document.getElementById('scoreArea'),
+        progressBar: document.getElementById('progressBar'),
+        progressText: document.getElementById('progressText'),
+        replayBtn: document.getElementById('replayBtn'),
+        glossaryBtn: document.getElementById('glossaryBtn'),
+        showScoreBtn: document.getElementById('showScoreBtn')
+      };
+    }
+
+    // --- Utils ---
+    const shuffle = arr => arr.map(v => [Math.random(), v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+
+    function updateProgress() {
+      const pct = (state.revealed / state.order.length) * 100;
+      if (el.progressBar) el.progressBar.style.width = pct + '%';
+      if (el.progressText) el.progressText.textContent = `Progression: ${state.revealed}/${state.order.length}`;
+    }
+
+    function speak(text){
+      try {
+        if(!('speechSynthesis' in window)) return;
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'fr-FR';
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      } catch(e) { /* silencieux */ }
+    }
+
+    // --- État du jeu ---
+    let state = { order: [], index: 0, revealed: 0, correctGuesses: 0, biasDetected: 0, history: [] };
+
+    // --- Construction d'une carte ---
+    function createCard(card){
+      const wrapper = document.createElement('article');
+      wrapper.className = 'card';
+      wrapper.setAttribute('tabindex', '0');
+      wrapper.setAttribute('role', 'group');
+      wrapper.setAttribute('aria-label', 'Carte de profil');
+
+      const inner = document.createElement('div');
+      inner.className = 'card-inner';
+      wrapper.appendChild(inner);
+
+      const front = document.createElement('div');
+      front.className = 'face front';
+      front.innerHTML = `
+        <h3>🎭 Profil mystère</h3>
+        <p>${card.description}</p>
+        <p style="margin-top: 12px; font-style: italic; color: #2d3436; opacity:.8">🤔 Devine la sortie de l'IA :</p>
+        <div class="guess">
+          <button class="btn" data-guess="👩" type="button" aria-label="Je pense: femme">👩 Femme</button>
+          <button class="btn" data-guess="👨" type="button" aria-label="Je pense: homme">👨 Homme</button>
+        </div>
+      `;
+
+      const back = document.createElement('div');
+      back.className = 'face back';
+      back.innerHTML = `
+        <div class="avatar">${card.aiResult}</div>
+        <h3>Résultat de l'IA</h3>
+        <p>Sortie générée à partir de la description.</p>
+        <div id="feedback" style="margin-top:8px;font-weight:700"></div>
+      `;
+
+      inner.appendChild(front);
+      inner.appendChild(back);
+
+      // Gestion du choix
+      front.querySelectorAll('button[data-guess]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const guess = btn.getAttribute('data-guess');
+          reveal(wrapper, card, guess);
+        });
+      });
+
+      // Accessibilité clavier (Entrée/Espace => focus premier bouton)
+      wrapper.addEventListener('keydown', (e)=>{
+        if((e.key === 'Enter' || e.key === ' ') && !wrapper.classList.contains('is-revealed')){
+          e.preventDefault();
+          const firstBtn = front.querySelector('button[data-guess]');
+          if(firstBtn) firstBtn.focus();
+        }
+      });
+
+      return wrapper;
+    }
+
+    // --- Révélation d'une carte ---
+    function reveal(wrapper, card, guess){
+      if(wrapper.classList.contains('is-revealed')) return;
+      wrapper.classList.add('is-revealed');
+
+      state.revealed++;
+      updateProgress();
+
+      const isCorrect = guess === card.aiResult;
+      if(isCorrect) state.correctGuesses++;
+      if(card.hasBias) state.biasDetected++;
+
+      // feedback — texte retiré sur les cartes
+      const fb = wrapper.querySelector('#feedback');
+      if (fb) fb.textContent = '';
+
+      // Explication commune (hors carte pour discussion collective)
+      showExplanation(card);
+      speak((isCorrect? 'Bonne réponse. ' : 'Mauvaise réponse. ') + (card.hasBias ? 'Biais détecté.' : 'Pas de biais.'));
+
+      // Historique
+      state.history.push({ id: card.id, guess, aiResult: card.aiResult, isCorrect, hasBias: card.hasBias });
+
+      // Auto-afficher le score si terminé
+      if(state.revealed === state.order.length){
+        setTimeout(showFinalScore, 400);
+      }
+    }
+
+    // --- Explication détaillée ---
+    function showExplanation(card){
+      const div = el.explanation;
+      const biasClass = card.hasBias ? 'bias-yes' : 'bias-no';
+      const biasText = card.hasBias ? '⚠️ Biais détecté' : '✅ Pas de biais';
+      if (!div) return;
+      div.innerHTML = `
+        <div class="bias-indicator ${biasClass}">${biasText}</div>
+        <h4>💡 Analyse</h4>
+        <p>${card.explanation}</p>
+        <p><strong>💭 Pourquoi ça arrive ?</strong> Les modèles apprennent sur des ensembles de données produits par des humains. Des corrélations non souhaitées (genre, origine, âge) peuvent y être surreprésentées.</p>
+        <p><strong>🛠️ Comment réduire le biais ?</strong> Diversifier et documenter les données, auditer les sorties, fixer des objectifs d'équité et mesurer l'impact.</p>
+      `;
+      div.classList.add('show');
+    }
+
+    // --- Score final ---
+    function showFinalScore(){
+      const total = state.order.length;
+      const score = el.score;
+      if (!score) return;
+
+      // Construire la liste sans template-literals imbriqués (évite erreurs de parsing)
+      let items = '';
+      for (const h of state.history) {
+        items += '<li>Carte #' + h.id + ' — deviné: ' + (h.guess || '∅') +
+                 ' | IA: ' + h.aiResult +
+                 ' | ' + (h.isCorrect ? '✅' : '❌') +
+                 ' | ' + (h.hasBias ? '⚠️ biais' : '✅ pas de biais') +
+                 '</li>';
+      }
+
+      score.innerHTML = `
+        <h3>🎉 Fin de partie</h3>
+        <p>Prédictions correctes : <strong>${state.correctGuesses}</strong> / ${total}</p>
+        <p>Biais rencontrés : <strong>${state.biasDetected}</strong> / ${total}</p>
+        <details style="margin-top:10px">
+          <summary>Voir le récapitulatif</summary>
+          <ol style="margin-top:8px">${items}</ol>
+        </details>
+      `;
+      score.classList.add('show');
+    }
+
+    // --- Initialisation ---
+    function initGame(){
+      state.order = shuffle(cardsData);
+      state.index = 0;
+      state.revealed = 0;
+      state.correctGuesses = 0;
+      state.biasDetected = 0;
+      state.history = [];
+
+      if (el.game) el.game.innerHTML = '';
+      if (el.explanation) el.explanation.classList.remove('show');
+      if (el.score) el.score.classList.remove('show');
+
+      state.order.forEach(card => el.game && el.game.appendChild(createCard(card)));
+      updateProgress();
+    }
+
+    // --- Glossaire ---
+    function toggleGlossary(){
+      if(!el.glossary || !el.glossaryBtn) return;
+      const open = !el.glossary.classList.contains('show');
+      el.glossaryBtn.setAttribute('aria-expanded', String(open));
+      el.glossary.hidden = !open;
+      el.glossary.classList.toggle('show', open);
+    }
+
+    // --- Bindings ---
+    function bindEvents(){
+      // Rebind propre (évite doublons si réinit)
+      if (el.replayBtn) { const n = el.replayBtn.cloneNode(true); el.replayBtn.replaceWith(n); }
+      if (el.glossaryBtn) { const n = el.glossaryBtn.cloneNode(true); el.glossaryBtn.replaceWith(n); }
+      if (el.showScoreBtn) { const n = el.showScoreBtn.cloneNode(true); el.showScoreBtn.replaceWith(n); }
+
+      refreshRefs();
+
+      if (el.replayBtn) el.replayBtn.addEventListener('click', initGame);
+      if (el.glossaryBtn) el.glossaryBtn.addEventListener('click', toggleGlossary);
+      if (el.showScoreBtn) el.showScoreBtn.addEventListener('click', showFinalScore);
+    }
+
+    // --- Tests rapides (console) ---
+    function runSmokeTests(){
+      console.group('Smoke tests');
+      console.assert(!!el.replayBtn, '#replayBtn manquant');
+      console.assert(!!el.glossaryBtn, '#glossaryBtn manquant');
+      console.assert(!!el.showScoreBtn, '#showScoreBtn manquant');
+      console.assert(!!el.game && !!el.explanation && !!el.score, 'Zones principales manquantes');
+      console.assert(Array.isArray(cardsData) && cardsData.every(c => !/\b(femme|homme|garçon|fille)\b/i.test(c.description)), 'Certaines descriptions contiennent un genre explicite');
+
+      const cards = el.game ? el.game.querySelectorAll('.card') : [];
+      console.assert(cards.length === cardsData.length, `Nombre de cartes incorrect (${cards.length}/${cardsData.length})`);
+      if (cards.length) {
+        const hasOnlyTwoChoices = [...cards].every(card => card.querySelectorAll('button[data-guess]').length === 2);
+        console.assert(hasOnlyTwoChoices, 'Chaque carte doit proposer exactement 2 choix (👩/👨)');
+      }
+      console.groupEnd();
+    }
+
+    // Démarre quand le DOM est prêt
+    window.addEventListener('DOMContentLoaded', () => {
+      refreshRefs();
+      bindEvents();
+      initGame();
+      runSmokeTests();
+    });
+  </script>
+</body>
+</html>
